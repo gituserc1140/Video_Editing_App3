@@ -6,12 +6,16 @@ import streamlit as st
 
 
 def render_editor_form() -> Dict[str, Any]:
-    st.title("Shotstack Video Editor")
-    st.caption("Upload a video, set simple edits, and render using your Shotstack Production API key.")
+    st.title("Creatomate Video Editor")
+    st.caption("Provide a video source URL, set simple edits, and render using your Creatomate API key.")
 
     with st.form("video-editor-form"):
-        api_key = st.text_input("Shotstack Production API key", type="password")
-        video_file = st.file_uploader("Upload video", type=["mp4", "mov", "webm", "m4v"])
+        api_key = st.text_input("Creatomate API key", type="password")
+        video_url = st.text_input(
+            "Video source URL",
+            placeholder="https://...",
+            help="Must be a publicly accessible URL to a video file that Creatomate can fetch.",
+        )
 
         st.subheader("Editing Controls")
         trim_start = st.number_input("Trim start (seconds)", min_value=0.0, value=0.0, step=0.1)
@@ -24,7 +28,7 @@ def render_editor_form() -> Dict[str, Any]:
     return {
         "submitted": submitted,
         "api_key": api_key,
-        "video_file": video_file,
+        "video_url": video_url.strip(),
         "trim_start": float(trim_start),
         "trim_end": float(trim_end),
         "text_overlay": text_overlay.strip(),

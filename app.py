@@ -7,7 +7,7 @@ import streamlit as st
 import api_client
 from ui import render_editor_form, render_result
 
-st.set_page_config(page_title="Shotstack Video Editor", page_icon="🎬", layout="centered")
+st.set_page_config(page_title="Creatomate Video Editor", page_icon="🎬", layout="centered")
 
 css_path = Path(__file__).parent / "static" / "styles.css"
 if css_path.exists():
@@ -17,17 +17,17 @@ state = render_editor_form()
 
 if state["submitted"]:
     if not state["api_key"]:
-        st.error("Please enter your Shotstack Production API key.")
-    elif state["video_file"] is None:
-        st.error("Please upload a video file.")
+        st.error("Please enter your Creatomate API key.")
+    elif not state["video_url"]:
+        st.error("Please provide a video source URL.")
     elif state["trim_end"] <= state["trim_start"]:
         st.error("Trim end must be greater than trim start.")
     else:
-        with st.spinner("Uploading and rendering video..."):
+        with st.spinner("Rendering video..."):
             try:
                 result = api_client.fetch_data(
                     api_key=state["api_key"],
-                    video_bytes=state["video_file"].getvalue(),
+                    video_url=state["video_url"],
                     trim_start=state["trim_start"],
                     trim_end=state["trim_end"],
                     text_overlay=state["text_overlay"],
@@ -38,4 +38,4 @@ if state["submitted"]:
             else:
                 render_result(result)
 else:
-    st.info("Enter your Production API key, upload a video, configure edits, then click Render Video.")
+    st.info("Enter your API key, provide a video source URL, configure edits, then click Render Video.")

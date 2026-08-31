@@ -1,11 +1,11 @@
-# Shotstack Video Editing Micro-App
+# Creatomate Video Editing Micro-App
 
-A Streamlit micro-app for simple Shotstack-powered video editing using the Template_App_Private-style structure.
+A Streamlit micro-app for simple Creatomate-powered video editing using the Template_App_Private-style structure.
 
 ## Repository structure
 
 - `app.py` — Streamlit entrypoint
-- `api_client.py` — Shotstack API client (`fetch_data()` uploads, renders, polls)
+- `api_client.py` — Creatomate API client (`fetch_data()` renders and polls)
 - `ui/` — Streamlit UI form and result rendering
 - `static/` — app styling assets
 - `config/` — environment-configurable settings
@@ -14,7 +14,7 @@ A Streamlit micro-app for simple Shotstack-powered video editing using the Templ
 ## Requirements
 
 - Python 3.10+
-- A Shotstack **Production** API key
+- A [Creatomate](https://creatomate.com/) API key
 
 Install dependencies:
 
@@ -30,11 +30,11 @@ streamlit run app.py
 
 ## How to use
 
-1. **Enter Production API key**
-   - Paste your Shotstack Production API key into the `Shotstack Production API key` field.
+1. **Enter API key**
+   - Paste your Creatomate API key into the `Creatomate API key` field. You can find it in your Creatomate project settings.
 
-2. **Upload a video**
-   - Upload an MP4/MOV/WEBM/M4V source file.
+2. **Provide a video source URL**
+   - Enter a publicly accessible URL to an MP4 (or other supported) video file. Creatomate fetches the source directly from this URL, so it must be reachable from the internet (e.g. a link to a file you've already uploaded to cloud storage).
 
 3. **Configure edits**
    - Set `Trim start (seconds)` and `Trim end (seconds)`.
@@ -43,8 +43,7 @@ streamlit run app.py
 
 4. **Render video**
    - Click `Render Video`.
-   - The app uploads your source to Shotstack Ingest, submits a Shotstack render timeline, polls render status, then displays the final video.
-   - Render submission uses `POST https://api.shotstack.io/edit/v1/render`; status polling uses `GET /edit/v1/render/{render_id}`. Opening `/edit/v1/render` in a browser sends a GET request and returns a “Not found” response.
+   - The app submits a Creatomate render request (`POST https://api.creatomate.com/v1/renders`), polls render status (`GET /v1/renders/{render_id}`), then displays the final video.
 
 5. **Download output**
    - Use the `Download rendered video` link shown after render completion.
