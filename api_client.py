@@ -121,23 +121,68 @@ def _build_source_payload(
     trim_end: float,
     text_overlay: str,
     music_url: Optional[str],
+    *,
+    width: int = 1280,
+    height: int = 720,
+    video_fit: str = "cover",
+    speed: float = 1.0,
+    mute_video: bool = False,
+    transition: Optional[str] = None,
+    transition_duration: float = 0.5,
+    text_position: tuple[str, str] = ("50%", "90%"),
+    text_duration: float = 5,
+    text_size: int = 48,
+    text_color: str = "#FFFFFF",
+    text_weight: str = "normal",
+    caption_text: str = "",
+    caption_start: float = 0,
+    caption_duration: float = 5,
+    music_volume: int = 40,
+    music_fade_in: float = 1,
+    music_fade_out: float = 1,
+    logo_url: Optional[str] = None,
+    logo_position: tuple[str, str] = ("50%", "10%"),
+    logo_size: int = 15,
+    logo_opacity: int = 100,
 ) -> Dict[str, Any]:
     if trim_end <= trim_start:
         raise ValueError("Trim end must be greater than trim start")
+    if video_fit not in {"cover", "contain", "fill"}:
+        raise ValueError("Video framing must be cover, contain, or fill")
+    if speed <= 0:
+        raise ValueError("Playback speed must be greater than zero")
+    if width <= 0 or height <= 0:
+        raise ValueError("Output dimensions must be greater than zero")
+    for url, description in ((music_url, "music"), (logo_url, "logo/image")):
+        if url and not _is_valid_url(url):
+            raise ValueError(f"A valid public {description} URL is required")
 
-    clip_length = round(trim_end - trim_start, 3)
+    clip_length = round((trim_end - trim_start) / speed, 3)
 
-    elements: List[Dict[str, Any]] = [
-        {
-            "type": "video",
-            "track": 1,
-            "time": 0,
-            "duration": clip_length,
-            "trim_start": round(trim_start, 3),
-            "trim_duration": clip_length,
-            "source": video_url,
-        }
-    ]
+    video_element: Dict[str, Any] = {
+        "type": "video",
+        "track": 1,
+        "time": 0,
+        "duration": clip_length,
+        "trim_start": round(trim_start, 3),
+        "trim_duration": round(trim_end - trim_start, 3),
+        "playback_rate": f"{round(speed * 100)}%",
+        "fit": video_fit,
+        "volume": "0%" if mute_video else "100%",
+        "source": video_url,
+    }
+    if transition == "fade":
+        fade_duration = min(transition_duration, clip_length / 2)
+        video_element["animations"] = [
+            {"time": 0, "duration": fade_duration, "transition": True, "type": "fade"},
+            {
+                "time": max(0, clip_length - fade_duration),
+                "duration": fade_duration,
+                "transition": True,
+                "type": "fade",
+            },
+        ]
+    elements: List[Dict[str, Any]] = [video_element]
 
     if text_overlay:
         elements.append(
@@ -145,10 +190,27 @@ def _build_source_payload(
                 "type": "text",
                 "track": 2,
                 "time": 0,
-                "duration": min(clip_length, 5),
+                "duration": min(clip_length, text_duration),
                 "text": text_overlay,
+                "x_alignment": text_position[0],
+                "y_alignment": text_position[1],
+                "font_size": f"{text_size}px",
+                "font_weight": "700" if text_weight == "bold" else "400",
+                "fill_color": text_color,
+            }
+        )
+
+    if caption_text and caption_start < clip_length:
+        elements.append(
+            {
+                "type": "text",
+                "track": 3,
+                "time": caption_start,
+                "duration": min(caption_duration, clip_length - caption_start),
+                "text": caption_text,
                 "x_alignment": "50%",
                 "y_alignment": "90%",
+                "font_size": "32px",
                 "fill_color": "#FFFFFF",
             }
         )
@@ -157,20 +219,37 @@ def _build_source_payload(
         elements.append(
             {
                 "type": "audio",
-                "track": 3,
+                "track": 4,
                 "time": 0,
                 "duration": clip_length,
                 "source": music_url,
-                "volume": "40%",
-                "audio_fade_in": 1,
-                "audio_fade_out": 1,
+                "volume": f"{music_volume}%",
+                "audio_fade_in": min(music_fade_in, clip_length),
+                "audio_fade_out": min(music_fade_out, clip_length),
+            }
+        )
+
+    if logo_url:
+        elements.append(
+            {
+                "type": "image",
+                "track": 5,
+                "time": 0,
+                "duration": clip_length,
+                "source": logo_url,
+                "fit": "contain",
+                "width": f"{logo_size}%",
+                "height": f"{logo_size}%",
+                "x_alignment": logo_position[0],
+                "y_alignment": logo_position[1],
+                "opacity": f"{logo_opacity}%",
             }
         )
 
     return {
         "output_format": "mp4",
-        "width": 1280,
-        "height": 720,
+        "width": width,
+        "height": height,
         "duration": clip_length,
         "elements": elements,
     }
@@ -183,6 +262,7 @@ def fetch_data(
     trim_end: float,
     text_overlay: str = "",
     music_url: Optional[str] = None,
+    **editing_options: Any,
 ) -> Dict[str, Any]:
     """Render a Creatomate video and return final video URL details."""
     if not api_key or not api_key.strip():
@@ -196,6 +276,7 @@ def fetch_data(
         trim_end=trim_end,
         text_overlay=text_overlay,
         music_url=music_url,
+        **editing_options,
     )
 
     render_response = _request(

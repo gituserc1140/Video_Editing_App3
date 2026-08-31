@@ -60,8 +60,12 @@ useful for videos you intend to post/monetize later and don't want exposed indef
 
 3. **Configure edits**
    - Set `Trim start (seconds)` and `Trim end (seconds)`.
-   - Add `Text overlay` (optional).
-   - Add an `Optional music URL` (optional, must be a publicly accessible audio URL).
+   - Choose output resolution/aspect ratio and whether to crop, contain, or stretch the video.
+   - Set playback speed, mute source audio, and optionally add fade transitions.
+   - Add an optional text overlay with position, size, color, weight, and duration controls.
+   - Add an optional timed caption.
+   - Add an `Optional music URL` (must be publicly accessible) with volume and fade controls.
+   - Add an optional publicly accessible logo/image URL with position, size, and opacity controls.
 
 4. **Render video**
    - Click `Render Video`.
@@ -76,3 +80,5 @@ useful for videos you intend to post/monetize later and don't want exposed indef
 - The app keeps API key entry in the UI (not hard-coded).
 - AWS credentials are never hard-coded; they are read from the environment/Streamlit secrets by boto3's standard credential chain.
 - Polling and timeout behavior can be adjusted via environment variables in `config/settings.py`.
+- Rendering consumes your Creatomate plan credits; choose shorter clips and lower resolutions to remain
+  within your plan's free-tier limits.
