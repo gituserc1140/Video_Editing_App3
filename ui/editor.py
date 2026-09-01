@@ -18,6 +18,15 @@ _POSITION_OPTIONS = {
     "Center": ("50%", "50%"),
     "Bottom": ("50%", "90%"),
 }
+_FONT_FAMILIES = ["Open Sans", "Roboto", "Montserrat", "Playfair Display", "Oswald", "Lato"]
+_TRANSITION_OPTIONS = {
+    "None": None,
+    "Fade": "fade",
+    "Slide": "slide",
+    "Wipe": "wipe",
+    "Reveal": "reveal",
+}
+_TRANSITION_DIRECTIONS = ["left", "right", "up", "down"]
 
 
 def _render_video_source_tabs() -> str:
@@ -86,11 +95,29 @@ def render_editor_form() -> Dict[str, Any]:
         )
         speed = st.select_slider("Playback speed", options=[0.5, 0.75, 1.0, 1.25, 1.5, 2.0], value=1.0)
         mute_video = st.checkbox("Mute original video audio")
-        transition = st.selectbox("Video transition", ["None", "Fade"])
+        transition = st.selectbox("Video transition", list(_TRANSITION_OPTIONS))
         transition_duration = st.number_input(
             "Transition duration (seconds)", min_value=0.1, max_value=3.0, value=0.5, step=0.1,
             disabled=transition == "None",
         )
+        transition_direction = st.selectbox(
+            "Transition direction",
+            _TRANSITION_DIRECTIONS,
+            disabled=transition in ("None", "Fade"),
+        )
+
+        st.subheader("Color and Crop")
+        brightness = st.slider("Brightness (%)", min_value=50, max_value=150, value=100)
+        contrast = st.slider("Contrast (%)", min_value=50, max_value=150, value=100)
+        saturation = st.slider("Saturation (%)", min_value=0, max_value=200, value=100)
+        col_gray, col_sepia = st.columns(2)
+        with col_gray:
+            grayscale = st.checkbox("Grayscale")
+        with col_sepia:
+            sepia = st.checkbox("Sepia")
+        video_x = st.slider("Horizontal position (%)", min_value=0, max_value=100, value=50)
+        video_y = st.slider("Vertical position (%)", min_value=0, max_value=100, value=50)
+        video_zoom = st.slider("Zoom (%)", min_value=50, max_value=200, value=100)
 
         st.subheader("Text and Captions")
         text_overlay = st.text_input("Text overlay")
@@ -101,10 +128,34 @@ def render_editor_form() -> Dict[str, Any]:
         text_size = st.number_input("Text size (pixels)", min_value=12, max_value=200, value=48, step=1)
         text_color = st.color_picker("Text color", "#FFFFFF")
         text_weight = st.selectbox("Text weight", ["Normal", "Bold"])
+        text_font_family = st.selectbox("Text font family", _FONT_FAMILIES)
+        text_background_enabled = st.checkbox("Add text background box")
+        text_background_color = st.color_picker(
+            "Text background color", "#000000", disabled=not text_background_enabled
+        )
+        text_outline_enabled = st.checkbox("Add text outline")
+        text_stroke_color = st.color_picker(
+            "Text outline color", "#000000", disabled=not text_outline_enabled
+        )
+        text_stroke_width = st.number_input(
+            "Text outline width (pixels)", min_value=0.0, max_value=20.0, value=2.0, step=0.5,
+            disabled=not text_outline_enabled,
+        )
         caption_text = st.text_input("Caption text (optional)")
         caption_start = st.number_input("Caption start (seconds)", min_value=0.0, value=0.0, step=0.1)
         caption_duration = st.number_input(
             "Caption duration (seconds)", min_value=0.1, value=5.0, step=0.1
+        )
+        st.caption("Add extra timed captions below (each row is a subtitle-style entry).")
+        extra_captions = st.data_editor(
+            [{"start": 0.0, "duration": 5.0, "text": ""}],
+            num_rows="dynamic",
+            key="extra_captions_editor",
+            column_config={
+                "start": st.column_config.NumberColumn("Start (s)", min_value=0.0, step=0.1),
+                "duration": st.column_config.NumberColumn("Duration (s)", min_value=0.1, step=0.1),
+                "text": st.column_config.TextColumn("Text"),
+            },
         )
 
         st.subheader("Audio and Logo")
@@ -112,6 +163,8 @@ def render_editor_form() -> Dict[str, Any]:
         music_volume = st.slider("Music volume (%)", min_value=0, max_value=100, value=40)
         music_fade_in = st.number_input("Music fade in (seconds)", min_value=0.0, value=1.0, step=0.1)
         music_fade_out = st.number_input("Music fade out (seconds)", min_value=0.0, value=1.0, step=0.1)
+        voiceover_url = st.text_input("Optional voiceover URL", placeholder="https://...")
+        voiceover_volume = st.slider("Voiceover volume (%)", min_value=0, max_value=100, value=100)
         logo_url = st.text_input("Optional logo/image URL", placeholder="https://...")
         logo_position = st.selectbox("Logo position", list(_POSITION_OPTIONS), index=0)
         logo_size = st.slider("Logo width (% of frame)", min_value=5, max_value=50, value=15)
@@ -120,6 +173,15 @@ def render_editor_form() -> Dict[str, Any]:
         submitted = st.form_submit_button("Render Video", use_container_width=True)
 
     width, height = _OUTPUT_PRESETS[output_preset]
+    captions = [
+        {
+            "start": float(row.get("start", 0) or 0),
+            "duration": float(row.get("duration", 5) or 5),
+            "text": str(row.get("text", "") or "").strip(),
+        }
+        for row in (extra_captions or [])
+        if str(row.get("text", "") or "").strip()
+    ]
     return {
         "submitted": submitted,
         "api_key": api_key,
@@ -137,23 +199,39 @@ def render_editor_form() -> Dict[str, Any]:
         }[video_fit],
         "speed": float(speed),
         "mute_video": mute_video,
-        "transition": transition.lower() if transition != "None" else None,
+        "transition": _TRANSITION_OPTIONS[transition],
         "transition_duration": float(transition_duration),
+        "transition_direction": transition_direction,
         "text_position": _POSITION_OPTIONS[text_position],
         "text_duration": float(text_duration),
         "text_size": int(text_size),
         "text_color": text_color,
         "text_weight": text_weight.lower(),
+        "text_font_family": text_font_family,
+        "text_background_color": text_background_color if text_background_enabled else None,
+        "text_stroke_color": text_stroke_color if text_outline_enabled else None,
+        "text_stroke_width": float(text_stroke_width) if text_outline_enabled else 0.0,
         "caption_text": caption_text.strip(),
         "caption_start": float(caption_start),
         "caption_duration": float(caption_duration),
+        "captions": captions,
         "music_volume": int(music_volume),
         "music_fade_in": float(music_fade_in),
         "music_fade_out": float(music_fade_out),
+        "voiceover_url": voiceover_url.strip() or None,
+        "voiceover_volume": int(voiceover_volume),
         "logo_url": logo_url.strip() or None,
         "logo_position": _POSITION_OPTIONS[logo_position],
         "logo_size": int(logo_size),
         "logo_opacity": int(logo_opacity),
+        "brightness": int(brightness),
+        "contrast": int(contrast),
+        "saturation": int(saturation),
+        "grayscale": grayscale,
+        "sepia": sepia,
+        "video_x": int(video_x),
+        "video_y": int(video_y),
+        "video_zoom": int(video_zoom),
     }
 
 
