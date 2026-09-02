@@ -6,9 +6,6 @@ from typing import Any, Dict, List
 
 import streamlit as st
 
-import s3_storage
-
-
 _OUTPUT_PRESETS = {
     "Landscape (16:9) — 1280 × 720": (1280, 720),
     "Portrait (9:16) — 720 × 1280": (720, 1280),
@@ -71,8 +68,8 @@ def _parse_subtitle_file(content: str) -> List[Dict[str, Any]]:
 
 
 def _render_video_source_tabs() -> str:
-    """Render the "paste URL" / "upload to private S3" tabs and return the resolved video URL."""
-    url_tab, upload_tab = st.tabs(["Paste video URL", "Upload video (private S3)"])
+    """Render the video source tabs and return the resolved video URL."""
+    url_tab, upload_tab = st.tabs(["Paste video URL", "S3 upload help"])
 
     with url_tab:
         pasted_url = st.text_input(
@@ -84,36 +81,17 @@ def _render_video_source_tabs() -> str:
 
     with upload_tab:
         st.caption(
-            "Uploads your video to a private S3 bucket and generates a temporary, "
-            "signed link that only Creatomate can use to fetch it. The link stops "
-            "working automatically once it expires, so the video is never left "
-            "publicly accessible."
+            "If S3 upload is not currently working in your environment, sign in to AWS "
+            "to manage your bucket and credentials."
         )
-        uploaded_file = st.file_uploader(
-            "Upload video", type=["mp4", "mov", "webm", "m4v"], key="s3_video_upload"
+        st.link_button(
+            "Sign in to AWS",
+            "https://signin.aws.amazon.com/signin",
+            use_container_width=True,
         )
-        if st.button("Upload to S3", disabled=uploaded_file is None):
-            with st.spinner("Uploading to S3..."):
-                try:
-                    presigned_url = s3_storage.upload_video(
-                        uploaded_file.getvalue(),
-                        uploaded_file.name,
-                        content_type=uploaded_file.type,
-                    )
-                except Exception as exc:
-                    st.error(f"Upload failed: {exc}")
-                else:
-                    st.session_state["uploaded_video_url"] = presigned_url
-                    st.success("Upload complete. The temporary source URL is ready below.")
+        st.info("After signing in, create or fetch a video URL and paste it in the first tab.")
 
-        if st.session_state.get("uploaded_video_url"):
-            st.text_input(
-                "Temporary video source URL",
-                value=st.session_state["uploaded_video_url"],
-                disabled=True,
-            )
-
-    return pasted_url.strip() or st.session_state.get("uploaded_video_url", "")
+    return pasted_url.strip()
 
 
 def render_editor_form() -> Dict[str, Any]:
