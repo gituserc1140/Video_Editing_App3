@@ -55,8 +55,8 @@ useful for videos you intend to post/monetize later and don't want exposed indef
 
 2. **Provide a video source**
    - **Paste video URL** tab: enter a publicly accessible URL to an MP4 (or other supported) video file.
-   - **Upload video (private S3)** tab: upload a file and click `Upload to S3` to store it in your private
-     bucket and generate a temporary signed URL automatically (requires S3 to be configured; see above).
+   - **S3 upload help** tab: use the `Sign in to AWS` button to open the AWS sign-in page, then paste a
+     usable video URL into the first tab.
 
 3. **Configure edits**
    - Set `Trim start (seconds)` and `Trim end (seconds)`.
